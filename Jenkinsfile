@@ -1,30 +1,35 @@
 pipeline {
-    agent any 
-    parameters {
-        //string(name: 'VERSION', defaultValue: '', description: 'version to deploy on prod')
-        choice(name: 'VERSION', choices: ['1.1.0','1.1.1','1.1.2'], description: '')
-        booleanParam(name: 'executeTests', defaultValue: true, description: '')
+    agent any
+    tools {
+        mvn "maven-3.6"
     }
     stages {
-        stage("Build") {
+        stage("build jar") {
             steps {
-                echo 'building the application ....................'
-            }
-        }
-        stage("Test") {
-            when {
-                expression {
-                    params.executeTests == true
+                script {
+                    echo "building the application ..................."
+                    sh "mvn package"  
                 }
             }
+
+        }
+        stage("build image") {
             steps {
-                echo 'testing the application ...................'
+                script {
+                    echo "building the docker image .................."
+                    withCredentials([usernamePassword(credentialsId: "docker-user", passwordVariable: "PASSWORD", usernameVariable: "USERNAME")]) {
+                        sh "docker build -t dockertvk/nana-java-maven-app:2.0 ."
+                        sh "echo $PASSWORD | docker login -u $USERNAME --password-stdin"
+                        sh "docker push dockertvk/nana-java-maven-app:2.0"
+                    }
+                }
             }
         }
-        stage("Deploy") {
+        stage("deploy") {
             steps {
-                echo 'deploying the application ...................'
-                echo "the deploying version is ${params.VERSION}"
+                script { 
+                    echo "deploying the application ............................"
+                }
             }
         }
     }
